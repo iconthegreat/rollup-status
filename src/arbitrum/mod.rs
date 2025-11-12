@@ -2,7 +2,6 @@ use crate::{AppState, RollupEvent};
 use chrono::Utc;
 use dotenv::dotenv;
 use ethers::prelude::*;
-use hex;
 use std::{env, sync::Arc};
 use tokio_stream::StreamExt;
 

@@ -1,3 +1,5 @@
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::serve;
 use axum::{Json, Router, extract::State, response::IntoResponse, routing::get};
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
@@ -5,12 +7,11 @@ use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
-use tokio::sync::broadcast;
-use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::serve;
 use tokio::net::TcpListener;
+use tokio::sync::broadcast;
 
 mod arbitrum;
+mod starknet;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RollupEvent {
@@ -50,10 +51,18 @@ async fn main() -> eyre::Result<()> {
     };
 
     // Spawning the Arbitrum watcher
-    let watcher_state = state.clone();
+    let arbitrum_state = state.clone();
     tokio::spawn(async move {
-        if let Err(e) = arbitrum::start_arbitrum_watcher(watcher_state).await {
+        if let Err(e) = arbitrum::start_arbitrum_watcher(arbitrum_state).await {
             eprintln!("❌ Arbitrum watcher failed: {:?}", e);
+        }
+    });
+
+    // Spawning the Starknet watcher
+    let starknet_state = state.clone();
+    tokio::spawn(async move {
+        if let Err(e) = starknet::start_starnet_watcher(starknet_state).await {
+            eprintln!("❌ Starknet watcher failed: {:?}", e);
         }
     });
 
@@ -61,6 +70,7 @@ async fn main() -> eyre::Result<()> {
     let app = Router::new()
         .route("/", get(root))
         .route("/rollups/arbitrum/status", get(get_arbitrum_status))
+        .route("/rollups/starknet/status", get(get_starknet_status))
         .route("/rollups/stream", get(ws_handler))
         .with_state(state.clone());
 
@@ -83,6 +93,15 @@ async fn root() -> &'static str {
 async fn get_arbitrum_status(State(state): State<AppState>) -> impl IntoResponse {
     let statuses = state.statuses.read().unwrap();
     if let Some(status) = statuses.get("arbitrum") {
+        Json(status.clone())
+    } else {
+        Json(RollupStatus::default())
+    }
+}
+
+async fn get_starknet_status(State(state): State<AppState>) -> impl IntoResponse { 
+    let statuses = state.statuses.read().unwrap();
+    if let Some(status) = statuses.get("starknet") {
         Json(status.clone())
     } else {
         Json(RollupStatus::default())
