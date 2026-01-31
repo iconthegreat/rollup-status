@@ -16,8 +16,14 @@ export function useWebSocket(url) {
 
     setStatus('connecting')
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = url.startsWith('ws') ? url : `${protocol}//${window.location.host}${url}`
+    // Use absolute URL if provided, otherwise construct from current host
+    let wsUrl
+    if (url.startsWith('ws://') || url.startsWith('wss://')) {
+      wsUrl = url
+    } else {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      wsUrl = `${protocol}//${window.location.host}${url}`
+    }
 
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws

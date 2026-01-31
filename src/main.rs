@@ -1,8 +1,10 @@
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::http::{header, Method};
 use axum::serve;
 use axum::{extract::State, response::IntoResponse, routing::get, Json, Router};
 use dotenv::dotenv;
 use tokio::net::TcpListener;
+use tower_http::cors::{Any, CorsLayer};
 
 mod arbitrum;
 mod starknet;
@@ -35,6 +37,12 @@ async fn main() -> eyre::Result<()> {
         }
     });
 
+    // CORS configuration for cross-origin requests from frontend
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods([Method::GET, Method::OPTIONS])
+        .allow_headers([header::CONTENT_TYPE]);
+
     // Build Axum routes
     let app = Router::new()
         .route("/", get(root))
@@ -43,6 +51,7 @@ async fn main() -> eyre::Result<()> {
         .route("/rollups/arbitrum/status", get(get_arbitrum_status))
         .route("/rollups/starknet/status", get(get_starknet_status))
         .route("/rollups/stream", get(ws_handler))
+        .layer(cors)
         .with_state(state);
 
     // Run Axum HTTP server (use PORT env var for Render, default to 8080)

@@ -3,20 +3,22 @@ import { Header } from './components/Header'
 import { RollupCard } from './components/RollupCard'
 import { EventFeed } from './components/EventFeed'
 import { useWebSocket } from './hooks/useWebSocket'
+import { config } from './config'
 
 function App() {
   const [arbitrumStatus, setArbitrumStatus] = useState(null)
   const [starknetStatus, setStarknetStatus] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const { events, status: wsStatus, clearEvents } = useWebSocket('/rollups/stream')
+  const wsEndpoint = config.wsUrl ? `${config.wsUrl}/rollups/stream` : '/rollups/stream'
+  const { events, status: wsStatus, clearEvents } = useWebSocket(wsEndpoint)
 
   useEffect(() => {
     const fetchStatus = async () => {
       try {
         const [arbRes, starkRes] = await Promise.allSettled([
-          fetch('/rollups/arbitrum/status'),
-          fetch('/rollups/starknet/status'),
+          fetch(`${config.apiUrl}/rollups/arbitrum/status`),
+          fetch(`${config.apiUrl}/rollups/starknet/status`),
         ])
 
         if (arbRes.status === 'fulfilled' && arbRes.value.ok) {

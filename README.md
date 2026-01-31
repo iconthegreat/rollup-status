@@ -163,6 +163,67 @@ cargo run --release
 
 The server starts on `http://0.0.0.0:8080`.
 
+## Deployment
+
+This project uses a split deployment:
+- **Backend** → Railway (persistent WebSocket connections)
+- **Frontend** → Vercel (static hosting, global CDN)
+
+### Backend (Railway)
+
+1. Install Railway CLI:
+   ```bash
+   npm install -g @railway/cli
+   ```
+
+2. Login and initialize:
+   ```bash
+   cd /path/to/rollup-proof-status
+   railway login
+   railway init
+   ```
+
+3. Set environment variables:
+   ```bash
+   railway variables set RPC_WS="wss://eth-mainnet.g.alchemy.com/v2/YOUR_KEY"
+   railway variables set ARBITRUM_INBOX_ADDRESS="0x1c479675ad559DC151F6Ec7ed3FbF8ceE79582B6"
+   railway variables set ARBITRUM_ROLLUP_CORE="0x5eF0D09d1E6204141B4d37530808eD19f60FBa35"
+   railway variables set STARKNET_CORE_ADDRESS="0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4"
+   ```
+
+4. Deploy:
+   ```bash
+   railway up
+   ```
+
+5. Note your Railway URL (e.g., `https://rollup-proof-status-production.up.railway.app`)
+
+Railway auto-detects the Dockerfile and deploys. Health check at `/health`. Free tier: $5/month credit.
+
+### Frontend (Vercel)
+
+1. Install Vercel CLI:
+   ```bash
+   npm install -g vercel
+   ```
+
+2. Deploy frontend:
+   ```bash
+   cd frontend
+   vercel
+   ```
+
+3. Set the backend URL in Vercel project settings:
+   - Go to your Vercel dashboard → Project → Settings → Environment Variables
+   - Add: `VITE_API_URL` = `https://your-railway-url.up.railway.app`
+
+4. Redeploy to pick up the env var:
+   ```bash
+   vercel --prod
+   ```
+
+Vercel's free tier includes unlimited static deployments.
+
 ## Project Structure
 
 ```
