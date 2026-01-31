@@ -1,0 +1,105 @@
+import { useState, useEffect } from 'react'
+import { Header } from './components/Header'
+import { RollupCard } from './components/RollupCard'
+import { EventFeed } from './components/EventFeed'
+import { useWebSocket } from './hooks/useWebSocket'
+
+function App() {
+  const [arbitrumStatus, setArbitrumStatus] = useState(null)
+  const [starknetStatus, setStarknetStatus] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  const { events, status: wsStatus, clearEvents } = useWebSocket('/rollups/stream')
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const [arbRes, starkRes] = await Promise.allSettled([
+          fetch('/rollups/arbitrum/status'),
+          fetch('/rollups/starknet/status'),
+        ])
+
+        if (arbRes.status === 'fulfilled' && arbRes.value.ok) {
+          const data = await arbRes.value.json()
+          setArbitrumStatus(data)
+        } else {
+          setArbitrumStatus({ error: 'Failed to fetch status' })
+        }
+
+        if (starkRes.status === 'fulfilled' && starkRes.value.ok) {
+          const data = await starkRes.value.json()
+          setStarknetStatus(data)
+        } else {
+          setStarknetStatus({ error: 'Failed to fetch status' })
+        }
+      } catch (err) {
+        console.error('Failed to fetch rollup status:', err)
+        setArbitrumStatus({ error: 'Connection failed' })
+        setStarknetStatus({ error: 'Connection failed' })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStatus()
+    const interval = setInterval(fetchStatus, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Update status from WebSocket events
+  useEffect(() => {
+    if (events.length === 0) return
+
+    const latestEvent = events[0]
+    if (!latestEvent?.rollup) return
+
+    const rollup = latestEvent.rollup.toLowerCase()
+    const updateStatus = (prev) => ({
+      ...prev,
+      last_updated: latestEvent.timestamp || new Date().toISOString(),
+    })
+
+    if (rollup === 'arbitrum') {
+      setArbitrumStatus(updateStatus)
+    } else if (rollup === 'starknet') {
+      setStarknetStatus(updateStatus)
+    }
+  }, [events])
+
+  return (
+    <div className="min-h-screen bg-bg-primary">
+      <Header connectionStatus={wsStatus} />
+
+      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-1 space-y-6">
+            <RollupCard
+              rollup="arbitrum"
+              status={arbitrumStatus}
+              loading={loading}
+            />
+            <RollupCard
+              rollup="starknet"
+              status={starknetStatus}
+              loading={loading}
+            />
+          </div>
+
+          <div className="lg:col-span-2">
+            <EventFeed events={events} onClear={clearEvents} />
+          </div>
+        </div>
+      </main>
+
+      <footer className="border-t border-border mt-auto">
+        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+          <p className="text-sm text-text-secondary text-center">
+            Rollup Proof Status Monitor — Tracking L2 → L1 events on Ethereum
+          </p>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
+export default App
