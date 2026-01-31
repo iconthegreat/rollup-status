@@ -1,3 +1,4 @@
+use crate::health::HealthMonitor;
 use crate::types::{AppState, RollupEvent};
 use chrono::Utc;
 use ethers::prelude::*;
@@ -9,7 +10,7 @@ abigen!(Sequencer, "abi/arbitrum_sequencer_inbox.json");
 abigen!(RollupCore, "abi/arbitrum_rollup_core.json");
 
 /// Start watching Arbitrum L1 contract events
-pub async fn start_arbitrum_watcher(state: AppState) -> eyre::Result<()> {
+pub async fn start_arbitrum_watcher(state: AppState, health: HealthMonitor) -> eyre::Result<()> {
     // Connect to Ethereum node
     let ws_url = env::var("RPC_WS")?;
     let provider = Provider::<Ws>::connect(&ws_url).await?;
@@ -28,19 +29,19 @@ pub async fn start_arbitrum_watcher(state: AppState) -> eyre::Result<()> {
     let rollup_core = Arc::new(RollupCore::new(rollup_core_address, client.clone()));
 
     // Spawn watcher for BatchDelivered events
-    spawn_batch_watcher(sequencer, state.clone());
+    spawn_batch_watcher(sequencer, state.clone(), health.clone());
 
     // Spawn watcher for AssertionCreated events (proofs submitted)
-    spawn_assertion_created_watcher(rollup_core.clone(), state.clone());
+    spawn_assertion_created_watcher(rollup_core.clone(), state.clone(), health.clone());
 
     // Spawn watcher for AssertionConfirmed events (proofs verified)
-    spawn_assertion_confirmed_watcher(rollup_core, state);
+    spawn_assertion_confirmed_watcher(rollup_core, state, health);
 
     Ok(())
 }
 
 /// Watch for SequencerBatchDelivered events
-fn spawn_batch_watcher(sequencer: Sequencer<Provider<Ws>>, state: AppState) {
+fn spawn_batch_watcher(sequencer: Sequencer<Provider<Ws>>, state: AppState, health: HealthMonitor) {
     tokio::spawn(async move {
         let event_filter = sequencer
             .event::<SequencerBatchDeliveredFilter>()
@@ -74,6 +75,9 @@ fn spawn_batch_watcher(sequencer: Sequencer<Provider<Ws>>, state: AppState) {
                 status.last_updated = Some(Utc::now().timestamp() as u64);
             });
 
+            // Record event for health monitoring
+            health.record_event(&rollup_event);
+
             // Broadcast to WebSocket clients
             state.broadcast(rollup_event);
 
@@ -86,7 +90,7 @@ fn spawn_batch_watcher(sequencer: Sequencer<Provider<Ws>>, state: AppState) {
 }
 
 /// Watch for AssertionCreated events (proofs submitted)
-fn spawn_assertion_created_watcher(rollup_core: Arc<RollupCore<Provider<Ws>>>, state: AppState) {
+fn spawn_assertion_created_watcher(rollup_core: Arc<RollupCore<Provider<Ws>>>, state: AppState, health: HealthMonitor) {
     tokio::spawn(async move {
         let event_filter = rollup_core
             .event::<AssertionCreatedFilter>()
@@ -119,6 +123,9 @@ fn spawn_assertion_created_watcher(rollup_core: Arc<RollupCore<Provider<Ws>>>, s
                 status.last_updated = Some(Utc::now().timestamp() as u64);
             });
 
+            // Record event for health monitoring
+            health.record_event(&rollup_event);
+
             state.broadcast(rollup_event);
 
             println!(
@@ -131,7 +138,7 @@ fn spawn_assertion_created_watcher(rollup_core: Arc<RollupCore<Provider<Ws>>>, s
 }
 
 /// Watch for AssertionConfirmed events (proofs verified/finalized)
-fn spawn_assertion_confirmed_watcher(rollup_core: Arc<RollupCore<Provider<Ws>>>, state: AppState) {
+fn spawn_assertion_confirmed_watcher(rollup_core: Arc<RollupCore<Provider<Ws>>>, state: AppState, health: HealthMonitor) {
     tokio::spawn(async move {
         let event_filter = rollup_core
             .event::<AssertionConfirmedFilter>()
@@ -163,6 +170,9 @@ fn spawn_assertion_confirmed_watcher(rollup_core: Arc<RollupCore<Provider<Ws>>>,
                 status.latest_finalized = Some(assertion_hash.clone());
                 status.last_updated = Some(Utc::now().timestamp() as u64);
             });
+
+            // Record event for health monitoring
+            health.record_event(&rollup_event);
 
             state.broadcast(rollup_event);
 

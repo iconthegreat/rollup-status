@@ -94,9 +94,14 @@ Ethereum Layer 2 rollups (Arbitrum, Starknet, Optimism, zkSync, etc.) periodical
 
 | Endpoint                      | Method | Description                    |
 |-------------------------------|--------|--------------------------------|
-| `/`                           | GET    | Health check                   |
+| `/`                           | GET    | Root endpoint                  |
+| `/health`                     | GET    | Service health check           |
+| `/rollups`                    | GET    | List supported rollups         |
 | `/rollups/arbitrum/status`    | GET    | Current Arbitrum status        |
 | `/rollups/starknet/status`    | GET    | Current Starknet status        |
+| `/rollups/arbitrum/health`    | GET    | Arbitrum health assessment     |
+| `/rollups/starknet/health`    | GET    | Starknet health assessment     |
+| `/rollups/health`             | GET    | All rollups health summary     |
 
 ### WebSocket
 
@@ -113,6 +118,18 @@ Ethereum Layer 2 rollups (Arbitrum, Starknet, Optimism, zkSync, etc.) periodical
   "latest_proof": "0xabc...",
   "latest_finalized": "0xdef...",
   "last_updated": 1706000000
+}
+```
+
+**Health Response:**
+```json
+{
+  "rollup": "arbitrum",
+  "status": "Healthy",
+  "last_event_age_secs": 120,
+  "last_batch_age_secs": 120,
+  "last_proof_age_secs": 3400,
+  "issues": []
 }
 ```
 
@@ -243,14 +260,37 @@ rollup-proof-status/
 └── .env
 ```
 
-## Health Monitoring (Future)
+## Health Monitoring
 
-The assessment layer will implement health rules:
+The assessment layer implements health rules to detect rollup issues:
 
-- **Lag Rule**: Alert if L2 head - L1 committed head > threshold
+### Health Status
+
+| Status        | Description                                      |
+|---------------|--------------------------------------------------|
+| `Healthy`     | Rollup is operating normally                     |
+| `Delayed`     | No events received within delayed threshold      |
+| `Halted`      | No events received within halted threshold       |
+| `Disconnected`| No events ever received                          |
+
+### Health Rules
+
 - **Cadence Rule**: Alert if no new L1 event in X minutes
 - **Time Rule**: Alert if last commitment timestamp exceeds allowed window
-- **Proof Rule**: Alert if ZK proofs stop verifying
+- **Batch Cadence**: Track time since last batch posted
+- **Proof Cadence**: Track time since last proof submitted
+
+### Default Thresholds
+
+| Rollup   | Delayed After | Halted After | Batch Cadence | Proof Cadence |
+|----------|---------------|--------------|---------------|---------------|
+| Arbitrum | 10 minutes    | 30 minutes   | 5 minutes     | 1 hour        |
+| Starknet | 2 hours       | 4 hours      | 1 hour        | 2 hours       |
+
+### Future Improvements
+
+- **Lag Rule**: Alert if L2 head - L1 committed head > threshold (requires L2 RPC)
+- **Proof Verification Rule**: Alert if ZK proofs stop verifying
 
 ## Supported Rollups
 

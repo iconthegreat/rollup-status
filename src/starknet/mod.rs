@@ -1,3 +1,4 @@
+use crate::health::HealthMonitor;
 use crate::types::{AppState, RollupEvent};
 use chrono::Utc;
 use ethers::prelude::*;
@@ -8,7 +9,7 @@ use tokio_stream::StreamExt;
 abigen!(Starknet, "abi/starknet_core_contract.json");
 
 /// Start watching Starknet L1 contract events
-pub async fn start_starknet_watcher(state: AppState) -> eyre::Result<()> {
+pub async fn start_starknet_watcher(state: AppState, health: HealthMonitor) -> eyre::Result<()> {
     // Connect to Ethereum node
     let ws_url = env::var("RPC_WS")?;
     let provider = Provider::<Ws>::connect(&ws_url).await?;
@@ -23,16 +24,16 @@ pub async fn start_starknet_watcher(state: AppState) -> eyre::Result<()> {
     let starknet_core = Arc::new(Starknet::new(starknet_core_address, client.clone()));
 
     // Spawn watcher for LogStateUpdate events
-    spawn_state_update_watcher(starknet_core.clone(), state.clone());
+    spawn_state_update_watcher(starknet_core.clone(), state.clone(), health.clone());
 
     // Spawn watcher for LogMessageToL2 events
-    spawn_message_watcher(starknet_core, state);
+    spawn_message_watcher(starknet_core, state, health);
 
     Ok(())
 }
 
 /// Watch for LogStateUpdate events (state diffs posted to L1)
-fn spawn_state_update_watcher(starknet_core: Arc<Starknet<Provider<Ws>>>, state: AppState) {
+fn spawn_state_update_watcher(starknet_core: Arc<Starknet<Provider<Ws>>>, state: AppState, health: HealthMonitor) {
     tokio::spawn(async move {
         let event_filter = starknet_core
             .event::<LogStateUpdateFilter>()
@@ -68,6 +69,9 @@ fn spawn_state_update_watcher(starknet_core: Arc<Starknet<Provider<Ws>>>, state:
                 status.last_updated = Some(Utc::now().timestamp() as u64);
             });
 
+            // Record event for health monitoring
+            health.record_event(&rollup_event);
+
             state.broadcast(rollup_event);
 
             println!(
@@ -79,7 +83,7 @@ fn spawn_state_update_watcher(starknet_core: Arc<Starknet<Provider<Ws>>>, state:
 }
 
 /// Watch for LogMessageToL2 events (L1 -> L2 messages)
-fn spawn_message_watcher(starknet_core: Arc<Starknet<Provider<Ws>>>, state: AppState) {
+fn spawn_message_watcher(starknet_core: Arc<Starknet<Provider<Ws>>>, state: AppState, health: HealthMonitor) {
     tokio::spawn(async move {
         let event_filter = starknet_core
             .event::<LogMessageToL2Filter>()
@@ -110,6 +114,9 @@ fn spawn_message_watcher(starknet_core: Arc<Starknet<Provider<Ws>>>, state: AppS
             state.update_status("starknet", |status| {
                 status.last_updated = Some(Utc::now().timestamp() as u64);
             });
+
+            // Record event for health monitoring
+            health.record_event(&rollup_event);
 
             state.broadcast(rollup_event);
 
