@@ -45,8 +45,9 @@ async fn main() -> eyre::Result<()> {
         .route("/rollups/stream", get(ws_handler))
         .with_state(state);
 
-    // Run Axum HTTP server
-    let addr: std::net::SocketAddr = "0.0.0.0:8080".parse().unwrap();
+    // Run Axum HTTP server (use PORT env var for Render, default to 8080)
+    let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let addr: std::net::SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
     println!("API running on http://{}", addr);
     println!("Endpoints:");
     println!("  GET  /                        - Root");

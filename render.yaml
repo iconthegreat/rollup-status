@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: rollup-proof-status
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: RPC_WS
+        sync: false
+      - key: ARBITRUM_INBOX_ADDRESS
+        sync: false
+      - key: ARBITRUM_ROLLUP_CORE
+        sync: false
+      - key: STARKNET_CORE_ADDRESS
+        sync: false
+    healthCheckPath: /health
