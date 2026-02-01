@@ -4,13 +4,17 @@ use axum::serve;
 use axum::{extract::State, response::IntoResponse, routing::get, Json, Router};
 use dotenv::dotenv;
 use tokio::net::TcpListener;
+use tokio_util::sync::CancellationToken;
 use tower_http::cors::{Any, CorsLayer};
 
 mod arbitrum;
+mod config;
 mod health;
+mod reconnect;
 mod starknet;
 mod types;
 
+pub use config::Config;
 pub use health::HealthMonitor;
 pub use types::{AppState, RollupEvent, RollupStatus};
 
@@ -25,10 +29,17 @@ pub struct ApiState {
 async fn main() -> eyre::Result<()> {
     dotenv().ok();
     tracing_subscriber::fmt::init();
-    println!("Starting Rollup Proof Status backend...");
+
+    // Load configuration
+    let config = Config::from_env();
+
+    tracing::info!("Starting Rollup Proof Status backend");
+
+    // Create cancellation token for graceful shutdown
+    let cancel_token = CancellationToken::new();
 
     // Create shared global state
-    let app_state = AppState::new();
+    let app_state = AppState::with_config(config.broadcast.clone());
 
     // Create health monitor
     let health_monitor = HealthMonitor::new();
@@ -36,25 +47,45 @@ async fn main() -> eyre::Result<()> {
     // Spawn the Arbitrum watcher
     let arbitrum_state = app_state.clone();
     let arbitrum_health = health_monitor.clone();
+    let arbitrum_reconnect = config.reconnect.clone();
+    let arbitrum_cancel = cancel_token.child_token();
     tokio::spawn(async move {
-        if let Err(e) = arbitrum::start_arbitrum_watcher(arbitrum_state, arbitrum_health).await {
-            eprintln!("Arbitrum watcher failed: {:?}", e);
+        if let Err(e) = arbitrum::start_arbitrum_watcher(
+            arbitrum_state,
+            arbitrum_health,
+            arbitrum_reconnect,
+            arbitrum_cancel,
+        )
+        .await
+        {
+            tracing::error!(rollup = "arbitrum", error = ?e, "Watcher failed to start");
         }
     });
 
     // Spawn the Starknet watcher
     let starknet_state = app_state.clone();
     let starknet_health = health_monitor.clone();
+    let starknet_reconnect = config.reconnect.clone();
+    let starknet_cancel = cancel_token.child_token();
     tokio::spawn(async move {
-        if let Err(e) = starknet::start_starknet_watcher(starknet_state, starknet_health).await {
-            eprintln!("Starknet watcher failed: {:?}", e);
+        if let Err(e) = starknet::start_starknet_watcher(
+            starknet_state,
+            starknet_health,
+            starknet_reconnect,
+            starknet_cancel,
+        )
+        .await
+        {
+            tracing::error!(rollup = "starknet", error = ?e, "Watcher failed to start");
         }
     });
 
     // Spawn the health monitor background task
     let monitor_clone = health_monitor.clone();
+    let health_config = config.health.clone();
+    let health_cancel = cancel_token.child_token();
     tokio::spawn(async move {
-        health::start_health_monitor(monitor_clone).await;
+        health::start_health_monitor(monitor_clone, health_config, health_cancel).await;
     });
 
     // Combined API state
@@ -83,23 +114,54 @@ async fn main() -> eyre::Result<()> {
         .layer(cors)
         .with_state(api_state);
 
-    // Run Axum HTTP server (use PORT env var for Render, default to 8080)
-    let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
-    let addr: std::net::SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
-    println!("API running on http://{}", addr);
-    println!("Endpoints:");
-    println!("  GET  /                         - Root");
-    println!("  GET  /health                   - Service health check");
-    println!("  GET  /rollups                  - List supported rollups");
-    println!("  GET  /rollups/arbitrum/status  - Arbitrum status");
-    println!("  GET  /rollups/starknet/status  - Starknet status");
-    println!("  GET  /rollups/arbitrum/health  - Arbitrum health");
-    println!("  GET  /rollups/starknet/health  - Starknet health");
-    println!("  GET  /rollups/health           - All rollups health");
-    println!("  WS   /rollups/stream           - Real-time event stream");
+    // Parse socket address
+    let addr: std::net::SocketAddr = config
+        .server
+        .addr()
+        .parse()
+        .map_err(|e| eyre::eyre!("Invalid server address '{}': {}", config.server.addr(), e))?;
+
+    tracing::info!(
+        host = %config.server.host,
+        port = config.server.port,
+        "API server starting"
+    );
+    tracing::info!("Endpoints:");
+    tracing::info!("  GET  /                         - Root");
+    tracing::info!("  GET  /health                   - Service health check");
+    tracing::info!("  GET  /rollups                  - List supported rollups");
+    tracing::info!("  GET  /rollups/arbitrum/status  - Arbitrum status");
+    tracing::info!("  GET  /rollups/starknet/status  - Starknet status");
+    tracing::info!("  GET  /rollups/arbitrum/health  - Arbitrum health");
+    tracing::info!("  GET  /rollups/starknet/health  - Starknet health");
+    tracing::info!("  GET  /rollups/health           - All rollups health");
+    tracing::info!("  WS   /rollups/stream           - Real-time event stream");
 
     let listener = TcpListener::bind(addr).await?;
-    serve(listener, app).await?;
+
+    // Setup graceful shutdown
+    let shutdown_token = cancel_token.clone();
+    tokio::spawn(async move {
+        match tokio::signal::ctrl_c().await {
+            Ok(()) => {
+                tracing::info!("Received shutdown signal, initiating graceful shutdown");
+                shutdown_token.cancel();
+            }
+            Err(e) => {
+                tracing::error!(error = ?e, "Failed to listen for shutdown signal");
+            }
+        }
+    });
+
+    // Run server with graceful shutdown
+    serve(listener, app)
+        .with_graceful_shutdown(async move {
+            cancel_token.cancelled().await;
+            tracing::info!("Shutting down HTTP server");
+        })
+        .await?;
+
+    tracing::info!("Server shutdown complete");
     Ok(())
 }
 
@@ -170,10 +232,10 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<ApiState>) -> impl
 async fn handle_ws(mut socket: WebSocket, state: ApiState) {
     let mut rx = state.app.tx.subscribe();
 
-    println!("New WebSocket client connected");
+    tracing::info!("New WebSocket client connected");
 
     // Send initial status to the client (including health)
-    let statuses = state.app.statuses.read().unwrap().clone();
+    let statuses = state.app.get_all_statuses();
     let health = state.health.evaluate_all();
     let initial = serde_json::json!({
         "type": "initial",
@@ -193,5 +255,5 @@ async fn handle_ws(mut socket: WebSocket, state: ApiState) {
         }
     }
 
-    println!("WebSocket client disconnected");
+    tracing::info!("WebSocket client disconnected");
 }
