@@ -52,10 +52,10 @@ export function Header({ connectionStatus }) {
             </div>
             <div>
               <h1 className="text-xl font-semibold text-text-primary">
-                Rollup Proof Status
+                Rollup Status
               </h1>
               <p className="text-sm text-text-secondary">
-                Real-time Rollup Analytics — Track batches, proofs & finality
+                Real-time Rollup Analytics Dashboard
               </p>
             </div>
           </div>

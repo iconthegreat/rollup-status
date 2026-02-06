@@ -9,6 +9,7 @@ function App() {
   const [arbitrumStatus, setArbitrumStatus] = useState(null)
   const [starknetStatus, setStarknetStatus] = useState(null)
   const [baseStatus, setBaseStatus] = useState(null)
+  const [healthData, setHealthData] = useState({})
   const [loading, setLoading] = useState(true)
 
   const wsEndpoint = config.wsUrl ? `${config.wsUrl}/rollups/stream` : '/rollups/stream'
@@ -17,10 +18,11 @@ function App() {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const [arbRes, starkRes, baseRes] = await Promise.allSettled([
+        const [arbRes, starkRes, baseRes, healthRes] = await Promise.allSettled([
           fetch(`${config.apiUrl}/rollups/arbitrum/status`),
           fetch(`${config.apiUrl}/rollups/starknet/status`),
           fetch(`${config.apiUrl}/rollups/base/status`),
+          fetch(`${config.apiUrl}/rollups/health`),
         ])
 
         if (arbRes.status === 'fulfilled' && arbRes.value.ok) {
@@ -42,6 +44,15 @@ function App() {
           setBaseStatus(data)
         } else {
           setBaseStatus({ error: 'Failed to fetch status' })
+        }
+
+        if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
+          const data = await healthRes.value.json()
+          const byRollup = {}
+          for (const entry of data.rollups || []) {
+            byRollup[entry.rollup] = entry
+          }
+          setHealthData(byRollup)
         }
       } catch (err) {
         console.error('Failed to fetch rollup status:', err)
@@ -126,16 +137,19 @@ function App() {
               rollup="arbitrum"
               status={arbitrumStatus}
               loading={loading}
+              health={healthData.arbitrum}
             />
             <RollupCard
               rollup="starknet"
               status={starknetStatus}
               loading={loading}
+              health={healthData.starknet}
             />
             <RollupCard
               rollup="base"
               status={baseStatus}
               loading={loading}
+              health={healthData.base}
             />
           </div>
 
