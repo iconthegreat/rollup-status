@@ -1,6 +1,6 @@
 # Rollup Proof Status
 
-Real-time dashboard tracking L2 rollup commitments on Ethereum L1. Monitors batch posts, proof submissions, and finalization across 5 rollups.
+Real-time dashboard tracking L2 rollup commitments on Ethereum L1. Monitors batch posts, proof submissions, and finalization across different rollups.
 
 ## Supported Rollups
 
