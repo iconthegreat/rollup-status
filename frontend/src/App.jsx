@@ -193,6 +193,7 @@ function App() {
               status={starknetStatus}
               loading={loading}
               health={healthData.starknet}
+              sequencer={sequencerData.starknet}
             />
             <RollupCard
               rollup="base"
@@ -206,12 +207,14 @@ function App() {
               status={optimismStatus}
               loading={loading}
               health={healthData.optimism}
+              sequencer={sequencerData.optimism}
             />
             <RollupCard
               rollup="zksync"
               status={zksyncStatus}
               loading={loading}
               health={healthData.zksync}
+              sequencer={sequencerData.zksync}
             />
           </div>
 

@@ -120,7 +120,11 @@ fn spawn_block_commit_watcher(
                 }
             };
 
-            tracing::info!(rollup = "zksync", stream = "block_commit", "Stream connected");
+            tracing::info!(
+                rollup = "zksync",
+                stream = "block_commit",
+                "Stream connected"
+            );
 
             loop {
                 tokio::select! {

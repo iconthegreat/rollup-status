@@ -2,6 +2,8 @@ use std::time::Duration;
 
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::types::BlockNumber;
+use reqwest::Client as HttpClient;
+use serde_json::json;
 use tokio_util::sync::CancellationToken;
 
 use crate::health::HealthMonitor;
@@ -143,6 +145,174 @@ pub async fn start_sequencer_poller(
                     s.last_polled = Some(now);
                 });
                 health.record_sequencer_downtime(&config.name, 0);
+            }
+        }
+    }
+}
+
+/// Configuration for the Starknet sequencer poller (non-EVM JSON-RPC)
+#[derive(Debug, Clone)]
+pub struct StarknetChainConfig {
+    /// HTTP RPC URL for the Starknet node
+    pub rpc_url: String,
+    /// How often to poll for new blocks
+    pub poll_interval: Duration,
+    /// How long without a new block before declaring downtime
+    pub downtime_threshold: Duration,
+}
+
+/// Start polling the Starknet sequencer for latest block info.
+///
+/// Starknet uses its own JSON-RPC (`starknet_getBlockWithTxHashes`) instead of
+/// standard Ethereum JSON-RPC, so we use raw HTTP requests.
+pub async fn start_starknet_sequencer_poller(
+    config: StarknetChainConfig,
+    state: AppState,
+    health: HealthMonitor,
+    cancel_token: CancellationToken,
+) {
+    let client = HttpClient::new();
+
+    tracing::info!(
+        rollup = "starknet",
+        rpc_url = %config.rpc_url,
+        poll_ms = config.poll_interval.as_millis() as u64,
+        "Starting Starknet L2 sequencer poller"
+    );
+
+    let mut interval = tokio::time::interval(config.poll_interval);
+    let mut prev_block: Option<u64> = None;
+    let mut prev_poll_time: Option<u64> = None;
+
+    loop {
+        tokio::select! {
+            _ = interval.tick() => {}
+            _ = cancel_token.cancelled() => {
+                tracing::info!(rollup = "starknet", "Starknet sequencer poller shutting down");
+                return;
+            }
+        }
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        let body = json!({
+            "jsonrpc": "2.0",
+            "method": "starknet_getBlockWithTxHashes",
+            "params": {"block_id": "latest"},
+            "id": 1
+        });
+
+        match client.post(&config.rpc_url).json(&body).send().await {
+            Ok(resp) => match resp.json::<serde_json::Value>().await {
+                Ok(json) => {
+                    let result = &json["result"];
+
+                    // Parse block number (hex string in Starknet)
+                    let block_number = result["block_number"]
+                        .as_u64()
+                        .or_else(|| {
+                            result["block_number"]
+                                .as_str()
+                                .and_then(|s| u64::from_str_radix(s.trim_start_matches("0x"), 16).ok())
+                        });
+
+                    // Parse timestamp (unix seconds)
+                    let block_timestamp = result["timestamp"]
+                        .as_u64()
+                        .or_else(|| {
+                            result["timestamp"]
+                                .as_str()
+                                .and_then(|s| u64::from_str_radix(s.trim_start_matches("0x"), 16).ok())
+                        });
+
+                    if block_number.is_none() {
+                        tracing::warn!(
+                            rollup = "starknet",
+                            response = %json,
+                            "Could not parse Starknet block"
+                        );
+                        state.update_sequencer_status("starknet", |s| {
+                            s.is_producing = false;
+                            s.last_polled = Some(now);
+                        });
+                        health.record_sequencer_downtime("starknet", 0);
+                        continue;
+                    }
+
+                    let bn = block_number.unwrap();
+                    let ts = block_timestamp.unwrap_or(now);
+
+                    let blocks_per_second = match (prev_block, prev_poll_time) {
+                        (Some(previous), Some(prev_time))
+                            if bn > previous && now > prev_time =>
+                        {
+                            let block_delta = (bn - previous) as f64;
+                            let time_delta = (now - prev_time) as f64;
+                            Some(block_delta / time_delta)
+                        }
+                        _ => None,
+                    };
+
+                    let seconds_since_last_block = now.saturating_sub(ts);
+                    let is_producing =
+                        seconds_since_last_block < config.downtime_threshold.as_secs();
+
+                    state.update_sequencer_status("starknet", |s| {
+                        s.latest_block = Some(bn);
+                        s.latest_block_timestamp = Some(ts);
+                        if let Some(bps) = blocks_per_second {
+                            s.blocks_per_second = Some(bps);
+                        }
+                        s.is_producing = is_producing;
+                        s.seconds_since_last_block = Some(seconds_since_last_block);
+                        s.last_polled = Some(now);
+                    });
+
+                    if is_producing {
+                        health.record_sequencer_activity("starknet");
+                    } else {
+                        health.record_sequencer_downtime("starknet", seconds_since_last_block);
+                    }
+
+                    tracing::debug!(
+                        rollup = "starknet",
+                        block = bn,
+                        timestamp = ts,
+                        bps = ?blocks_per_second,
+                        producing = is_producing,
+                        "Starknet sequencer poll"
+                    );
+
+                    prev_block = Some(bn);
+                    prev_poll_time = Some(now);
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        rollup = "starknet",
+                        error = ?e,
+                        "Failed to parse Starknet RPC response"
+                    );
+                    state.update_sequencer_status("starknet", |s| {
+                        s.is_producing = false;
+                        s.last_polled = Some(now);
+                    });
+                    health.record_sequencer_downtime("starknet", 0);
+                }
+            },
+            Err(e) => {
+                tracing::warn!(
+                    rollup = "starknet",
+                    error = ?e,
+                    "Failed to reach Starknet RPC"
+                );
+                state.update_sequencer_status("starknet", |s| {
+                    s.is_producing = false;
+                    s.last_polled = Some(now);
+                });
+                health.record_sequencer_downtime("starknet", 0);
             }
         }
     }

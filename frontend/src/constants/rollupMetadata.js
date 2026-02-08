@@ -41,6 +41,10 @@ export const rollupMetadata = {
       delayedSecs: 7200,         // 2 hours
       haltedSecs: 14400,         // 4 hours
     },
+    sequencer: {
+      expectedBlockTimeSecs: 30,   // ~30s block time
+      downtimeThresholdSecs: 120,
+    },
   },
   base: {
     type: 'OP Stack Rollup',
@@ -85,6 +89,10 @@ export const rollupMetadata = {
       delayedSecs: 3600,         // 1 hour
       haltedSecs: 7200,          // 2 hours
     },
+    sequencer: {
+      expectedBlockTimeSecs: 2,   // ~0.5 blocks/sec
+      downtimeThresholdSecs: 30,
+    },
   },
   zksync: {
     type: 'ZK Rollup',
@@ -100,6 +108,10 @@ export const rollupMetadata = {
       proofCadenceSecs: 3600,    // 1 hour
       delayedSecs: 7200,         // 2 hours
       haltedSecs: 14400,         // 4 hours
+    },
+    sequencer: {
+      expectedBlockTimeSecs: 1,   // ~1 block/sec
+      downtimeThresholdSecs: 30,
     },
   },
 }

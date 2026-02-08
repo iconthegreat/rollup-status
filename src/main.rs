@@ -179,6 +179,58 @@ async fn main() -> eyre::Result<()> {
         });
     }
 
+    if let Some(rpc_url) = config.sequencer.starknet_l2_rpc.clone() {
+        let starknet_config = sequencer::StarknetChainConfig {
+            rpc_url,
+            poll_interval: config.sequencer.starknet_poll_interval,
+            downtime_threshold: config.sequencer.downtime_threshold,
+        };
+        let seq_state = app_state.clone();
+        let seq_health = health_monitor.clone();
+        let seq_cancel = cancel_token.child_token();
+        tokio::spawn(async move {
+            sequencer::start_starknet_sequencer_poller(
+                starknet_config,
+                seq_state,
+                seq_health,
+                seq_cancel,
+            )
+            .await;
+        });
+    }
+
+    if let Some(rpc_url) = config.sequencer.optimism_l2_rpc.clone() {
+        let chain_config = sequencer::L2ChainConfig {
+            name: "optimism".to_string(),
+            rpc_url,
+            poll_interval: config.sequencer.optimism_poll_interval,
+            downtime_threshold: config.sequencer.downtime_threshold,
+        };
+        let seq_state = app_state.clone();
+        let seq_health = health_monitor.clone();
+        let seq_cancel = cancel_token.child_token();
+        tokio::spawn(async move {
+            sequencer::start_sequencer_poller(chain_config, seq_state, seq_health, seq_cancel)
+                .await;
+        });
+    }
+
+    if let Some(rpc_url) = config.sequencer.zksync_l2_rpc.clone() {
+        let chain_config = sequencer::L2ChainConfig {
+            name: "zksync".to_string(),
+            rpc_url,
+            poll_interval: config.sequencer.zksync_poll_interval,
+            downtime_threshold: config.sequencer.downtime_threshold,
+        };
+        let seq_state = app_state.clone();
+        let seq_health = health_monitor.clone();
+        let seq_cancel = cancel_token.child_token();
+        tokio::spawn(async move {
+            sequencer::start_sequencer_poller(chain_config, seq_state, seq_health, seq_cancel)
+                .await;
+        });
+    }
+
     // Combined API state
     let api_state = ApiState {
         app: app_state,
@@ -208,7 +260,10 @@ async fn main() -> eyre::Result<()> {
         .route("/rollups/zksync/health", get(get_zksync_health))
         .route("/rollups/health", get(get_all_health))
         .route("/rollups/arbitrum/sequencer", get(get_arbitrum_sequencer))
+        .route("/rollups/starknet/sequencer", get(get_starknet_sequencer))
         .route("/rollups/base/sequencer", get(get_base_sequencer))
+        .route("/rollups/optimism/sequencer", get(get_optimism_sequencer))
+        .route("/rollups/zksync/sequencer", get(get_zksync_sequencer))
         .route("/rollups/sequencer", get(get_all_sequencer))
         .route("/rollups/stream", get(ws_handler))
         .route("/test/event", post(post_test_event))
@@ -243,7 +298,10 @@ async fn main() -> eyre::Result<()> {
     tracing::info!("  GET  /rollups/zksync/health     - zkSync health");
     tracing::info!("  GET  /rollups/health            - All rollups health");
     tracing::info!("  GET  /rollups/arbitrum/sequencer - Arbitrum L2 sequencer");
+    tracing::info!("  GET  /rollups/starknet/sequencer - Starknet L2 sequencer");
     tracing::info!("  GET  /rollups/base/sequencer    - Base L2 sequencer");
+    tracing::info!("  GET  /rollups/optimism/sequencer - Optimism L2 sequencer");
+    tracing::info!("  GET  /rollups/zksync/sequencer  - zkSync L2 sequencer");
     tracing::info!("  GET  /rollups/sequencer         - All L2 sequencer statuses");
     tracing::info!("  WS   /rollups/stream            - Real-time event stream");
 
@@ -304,6 +362,7 @@ async fn list_rollups() -> impl IntoResponse {
                 "name": "starknet",
                 "status_endpoint": "/rollups/starknet/status",
                 "health_endpoint": "/rollups/starknet/health",
+                "sequencer_endpoint": "/rollups/starknet/sequencer",
                 "events": ["StateUpdate", "MessageLog"]
             },
             {
@@ -317,12 +376,14 @@ async fn list_rollups() -> impl IntoResponse {
                 "name": "optimism",
                 "status_endpoint": "/rollups/optimism/status",
                 "health_endpoint": "/rollups/optimism/health",
+                "sequencer_endpoint": "/rollups/optimism/sequencer",
                 "events": ["DisputeGameCreated", "WithdrawalProven"]
             },
             {
                 "name": "zksync",
                 "status_endpoint": "/rollups/zksync/status",
                 "health_endpoint": "/rollups/zksync/health",
+                "sequencer_endpoint": "/rollups/zksync/sequencer",
                 "events": ["BlockCommit", "BlocksVerification", "BlockExecution"]
             }
         ]
@@ -381,6 +442,18 @@ async fn get_arbitrum_sequencer(State(state): State<ApiState>) -> impl IntoRespo
 
 async fn get_base_sequencer(State(state): State<ApiState>) -> impl IntoResponse {
     Json(state.app.get_sequencer_status("base"))
+}
+
+async fn get_starknet_sequencer(State(state): State<ApiState>) -> impl IntoResponse {
+    Json(state.app.get_sequencer_status("starknet"))
+}
+
+async fn get_optimism_sequencer(State(state): State<ApiState>) -> impl IntoResponse {
+    Json(state.app.get_sequencer_status("optimism"))
+}
+
+async fn get_zksync_sequencer(State(state): State<ApiState>) -> impl IntoResponse {
+    Json(state.app.get_sequencer_status("zksync"))
 }
 
 async fn get_all_sequencer(State(state): State<ApiState>) -> impl IntoResponse {

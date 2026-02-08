@@ -120,10 +120,22 @@ pub struct SequencerConfig {
     pub arbitrum_l2_rpc: Option<String>,
     /// Base L2 RPC URL (HTTP)
     pub base_l2_rpc: Option<String>,
+    /// Starknet L2 RPC URL (HTTP) - uses Starknet JSON-RPC (non-EVM)
+    pub starknet_l2_rpc: Option<String>,
+    /// Optimism L2 RPC URL (HTTP)
+    pub optimism_l2_rpc: Option<String>,
+    /// zkSync Era L2 RPC URL (HTTP)
+    pub zksync_l2_rpc: Option<String>,
     /// Arbitrum L2 polling interval
     pub arbitrum_poll_interval: Duration,
     /// Base L2 polling interval
     pub base_poll_interval: Duration,
+    /// Starknet L2 polling interval
+    pub starknet_poll_interval: Duration,
+    /// Optimism L2 polling interval
+    pub optimism_poll_interval: Duration,
+    /// zkSync Era L2 polling interval
+    pub zksync_poll_interval: Duration,
     /// Threshold before declaring sequencer downtime
     pub downtime_threshold: Duration,
 }
@@ -133,6 +145,9 @@ impl Default for SequencerConfig {
         Self {
             arbitrum_l2_rpc: env::var("ARBITRUM_L2_RPC").ok(),
             base_l2_rpc: env::var("BASE_L2_RPC").ok(),
+            starknet_l2_rpc: env::var("STARKNET_L2_RPC").ok(),
+            optimism_l2_rpc: env::var("OPTIMISM_L2_RPC").ok(),
+            zksync_l2_rpc: env::var("ZKSYNC_L2_RPC").ok(),
             arbitrum_poll_interval: Duration::from_millis(
                 env::var("ARBITRUM_L2_POLL_MS")
                     .ok()
@@ -141,6 +156,24 @@ impl Default for SequencerConfig {
             ),
             base_poll_interval: Duration::from_millis(
                 env::var("BASE_L2_POLL_MS")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(5000),
+            ),
+            starknet_poll_interval: Duration::from_millis(
+                env::var("STARKNET_L2_POLL_MS")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(10000),
+            ),
+            optimism_poll_interval: Duration::from_millis(
+                env::var("OPTIMISM_L2_POLL_MS")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(5000),
+            ),
+            zksync_poll_interval: Duration::from_millis(
+                env::var("ZKSYNC_L2_POLL_MS")
                     .ok()
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(5000),

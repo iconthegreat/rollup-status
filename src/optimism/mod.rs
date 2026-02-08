@@ -121,7 +121,11 @@ fn spawn_dispute_game_watcher(
                 }
             };
 
-            tracing::info!(rollup = "optimism", stream = "dispute_game", "Stream connected");
+            tracing::info!(
+                rollup = "optimism",
+                stream = "dispute_game",
+                "Stream connected"
+            );
 
             loop {
                 tokio::select! {
