@@ -1,16 +1,5 @@
 import { rollupMetadata, formatDuration, formatThreshold } from '../constants/rollupMetadata'
-
-function Tooltip({ text, children }) {
-  return (
-    <div className="relative group/tip">
-      {children}
-      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 rounded bg-bg-primary border border-border text-xs text-text-primary whitespace-normal max-w-[220px] text-center opacity-0 group-hover/tip:opacity-100 transition-opacity z-10 shadow-lg">
-        {text}
-        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-border" />
-      </div>
-    </div>
-  )
-}
+import { Tooltip } from './Tooltip'
 
 function LivenessIndicator({ label, tooltip, ageSecs, cadenceSecs, delayedSecs }) {
   let colorClass = 'text-text-secondary'
@@ -57,6 +46,34 @@ const issueTooltips = {
   'delayed threshold': 'Events are arriving slower than expected. The rollup may be experiencing congestion.',
 }
 
+const eventTooltips = {
+  BatchDelivered: 'Arbitrum batch of compressed L2 transactions posted to the SequencerInbox on L1.',
+  ProofSubmitted: 'An assertion claiming a new L2 state root, submitted to the RollupCore contract.',
+  ProofVerified: 'An assertion that passed the challenge period and was confirmed as valid on L1.',
+  StateUpdate: 'Starknet state diff with a STARK proof, verified and recorded on the L1 core contract.',
+  DisputeGameCreated: 'A new dispute game proposing an L2 output root, created via the DisputeGameFactory.',
+  WithdrawalProven: 'A withdrawal proof submitted to the OptimismPortal, enabling funds to exit L2.',
+  BlockCommit: 'A batch of L2 blocks committed to the zkSync Diamond contract on L1.',
+  BlocksVerification: 'A ZK proof verifying a range of committed batches on L1.',
+  BlockExecution: 'A verified batch executed and finalized on L1, making its state permanent.',
+  MessageLog: 'An L1-to-L2 message logged on the Starknet core contract.',
+}
+
+const rollupTypeTooltips = {
+  'Optimistic Rollup': 'Assumes transactions are valid by default. Fraud proofs can challenge invalid state within a dispute window.',
+  'ZK Rollup': 'Submits cryptographic validity proofs (ZK proofs) to L1, guaranteeing correctness without a challenge period.',
+  'OP Stack Rollup': 'Built on the OP Stack framework with fault proof games for dispute resolution.',
+}
+
+const contractTooltips = {
+  'Sequencer Inbox': 'The L1 contract where the Arbitrum sequencer posts compressed transaction batches.',
+  'Rollup Core': 'Manages Arbitrum assertions, challenges, and state confirmations on L1.',
+  'Core Contract': 'The Starknet L1 contract that verifies STARK proofs and records state updates.',
+  'Dispute Game Factory': 'Creates dispute games for each proposed L2 output root on OP Stack chains.',
+  'Optimism Portal': 'The gateway contract for deposits and withdrawals between L1 and the OP Stack L2.',
+  'Diamond Proxy': 'The upgradeable proxy contract for zkSync Era that handles commits, proofs, and execution.',
+}
+
 function getIssueTooltip(issue) {
   for (const [key, tip] of Object.entries(issueTooltips)) {
     if (issue.toLowerCase().includes(key.toLowerCase())) return tip
@@ -74,9 +91,11 @@ export function RollupDetails({ rollup, health, sequencer }) {
     <div className="space-y-4 pt-3">
       {/* Liveness Indicators */}
       <div>
-        <p className="text-xs text-text-secondary uppercase tracking-wide mb-2">
-          Liveness
-        </p>
+        <Tooltip text="How recently the backend observed on-chain activity for this rollup. Color-coded: green = on schedule, yellow = behind cadence, red = exceeds threshold.">
+          <p className="text-xs text-text-secondary uppercase tracking-wide mb-2 cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2 w-fit">
+            Liveness
+          </p>
+        </Tooltip>
         <div className="space-y-1.5 bg-bg-tertiary rounded-md p-3">
           <LivenessIndicator
             label="Last Event"
@@ -104,9 +123,11 @@ export function RollupDetails({ rollup, health, sequencer }) {
 
       {/* Health Rules */}
       <div>
-        <p className="text-xs text-text-secondary uppercase tracking-wide mb-2">
-          Health Rules
-        </p>
+        <Tooltip text="Configurable thresholds that determine when a rollup is flagged as delayed or halted based on event cadence.">
+          <p className="text-xs text-text-secondary uppercase tracking-wide mb-2 cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2 w-fit">
+            Health Rules
+          </p>
+        </Tooltip>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 bg-bg-tertiary rounded-md p-3">
           <Tooltip text={ruleTooltips.batchCadence}>
             <div className="flex justify-between cursor-help">
@@ -138,9 +159,11 @@ export function RollupDetails({ rollup, health, sequencer }) {
       {/* Active Issues */}
       {health?.issues?.length > 0 && (
         <div>
-          <p className="text-xs text-text-secondary uppercase tracking-wide mb-2">
-            Active Issues
-          </p>
+          <Tooltip text="Current problems detected by the health monitor. Issues clear automatically when normal activity resumes.">
+            <p className="text-xs text-text-secondary uppercase tracking-wide mb-2 cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2 w-fit">
+              Active Issues
+            </p>
+          </Tooltip>
           <div className="flex flex-wrap gap-1.5">
             {health.issues.map((issue, i) => (
               <Tooltip key={i} text={getIssueTooltip(issue)}>
@@ -161,12 +184,16 @@ export function RollupDetails({ rollup, health, sequencer }) {
       {/* Sequencer Metrics */}
       {sequencer && (
         <div>
-          <p className="text-xs text-text-secondary uppercase tracking-wide mb-2">
-            Sequencer Metrics
-          </p>
+          <Tooltip text="Detailed metrics from polling the L2 sequencer's RPC endpoint for block production activity.">
+            <p className="text-xs text-text-secondary uppercase tracking-wide mb-2 cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2 w-fit">
+              Sequencer Metrics
+            </p>
+          </Tooltip>
           <div className="space-y-1.5 bg-bg-tertiary rounded-md p-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Seconds since last block</span>
+              <Tooltip text="How long ago the sequencer produced its most recent block. A rising value may signal the sequencer has stalled.">
+                <span className="text-xs text-text-secondary cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2">Seconds since last block</span>
+              </Tooltip>
               <span className="text-xs font-mono text-text-primary">
                 {sequencer.seconds_since_last_block != null
                   ? `${formatDuration(sequencer.seconds_since_last_block)}`
@@ -174,7 +201,9 @@ export function RollupDetails({ rollup, health, sequencer }) {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Last polled</span>
+              <Tooltip text="When the backend last queried the L2 RPC for new block data.">
+                <span className="text-xs text-text-secondary cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2">Last polled</span>
+              </Tooltip>
               <span className="text-xs font-mono text-text-primary">
                 {sequencer.last_polled
                   ? new Date(sequencer.last_polled * 1000).toLocaleTimeString()
@@ -182,7 +211,9 @@ export function RollupDetails({ rollup, health, sequencer }) {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Block timestamp</span>
+              <Tooltip text="The timestamp embedded in the latest L2 block, set by the sequencer when the block was produced.">
+                <span className="text-xs text-text-secondary cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2">Block timestamp</span>
+              </Tooltip>
               <span className="text-xs font-mono text-text-primary">
                 {sequencer.latest_block_timestamp
                   ? new Date(sequencer.latest_block_timestamp * 1000).toLocaleTimeString()
@@ -195,27 +226,34 @@ export function RollupDetails({ rollup, health, sequencer }) {
 
       {/* Rollup Metadata */}
       <div>
-        <p className="text-xs text-text-secondary uppercase tracking-wide mb-2">
-          Rollup Info
-        </p>
+        <Tooltip text="Technical details about this rollup including its type, the on-chain events we track, and the L1 smart contracts being monitored.">
+          <p className="text-xs text-text-secondary uppercase tracking-wide mb-2 cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2 w-fit">
+            Rollup Info
+          </p>
+        </Tooltip>
         <div className="bg-bg-tertiary rounded-md p-3 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex px-2 py-0.5 rounded text-xs bg-bg-secondary text-text-primary border border-border">
-              {rollupType}
-            </span>
-            {events.map((evt) => (
-              <span
-                key={evt}
-                className="inline-flex px-1.5 py-0.5 rounded text-xs bg-bg-secondary text-text-secondary border border-border"
-              >
-                {evt}
+            <Tooltip text={rollupTypeTooltips[rollupType] || rollupType}>
+              <span className="inline-flex px-2 py-0.5 rounded text-xs bg-bg-secondary text-text-primary border border-border cursor-help">
+                {rollupType}
               </span>
+            </Tooltip>
+            {events.map((evt) => (
+              <Tooltip key={evt} text={eventTooltips[evt] || `On-chain event: ${evt}`}>
+                <span
+                  className="inline-flex px-1.5 py-0.5 rounded text-xs bg-bg-secondary text-text-secondary border border-border cursor-help"
+                >
+                  {evt}
+                </span>
+              </Tooltip>
             ))}
           </div>
           <div className="space-y-1.5">
             {contracts.map((c) => (
               <div key={c.address} className="flex items-center justify-between">
-                <span className="text-xs text-text-secondary">{c.label}</span>
+                <Tooltip text={contractTooltips[c.label] || `L1 contract: ${c.label}`}>
+                  <span className="text-xs text-text-secondary cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2">{c.label}</span>
+                </Tooltip>
                 <a
                   href={`https://etherscan.io/address/${c.address}`}
                   target="_blank"

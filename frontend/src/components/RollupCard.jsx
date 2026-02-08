@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { StatusBadge } from './StatusBadge'
 import { CopyableValue } from './CopyableValue'
 import { RollupDetails } from './RollupDetails'
+import { Tooltip } from './Tooltip'
 import arbitrumLogo from '../assets/arbitrum.png'
 import starknetLogo from '../assets/starknet.png'
 import baseLogo from '../assets/base.png'
@@ -98,9 +99,11 @@ export function RollupCard({ rollup, status, loading, health, sequencer }) {
         ) : (
           <div className="space-y-3">
             <div>
-              <p className="text-xs text-text-secondary uppercase tracking-wide">
-                Latest Batch
-              </p>
+              <Tooltip text="The most recent batch of L2 transactions posted to Ethereum L1. Batches contain compressed transaction data that anchors L2 state on-chain.">
+                <p className="text-xs text-text-secondary uppercase tracking-wide cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2 w-fit">
+                  Latest Batch
+                </p>
+              </Tooltip>
               <CopyableValue
                 value={status?.latest_batch}
                 isHash={String(status?.latest_batch || '').startsWith('0x')}
@@ -108,9 +111,11 @@ export function RollupCard({ rollup, status, loading, health, sequencer }) {
               />
             </div>
             <div>
-              <p className="text-xs text-text-secondary uppercase tracking-wide">
-                Latest Proof
-              </p>
+              <Tooltip text="The most recent validity or fraud proof submitted to L1. Proofs verify that L2 state transitions are correct.">
+                <p className="text-xs text-text-secondary uppercase tracking-wide cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2 w-fit">
+                  Latest Proof
+                </p>
+              </Tooltip>
               <CopyableValue
                 value={status?.latest_proof}
                 isHash={true}
@@ -118,9 +123,11 @@ export function RollupCard({ rollup, status, loading, health, sequencer }) {
               />
             </div>
             <div>
-              <p className="text-xs text-text-secondary uppercase tracking-wide">
-                Latest Finalized
-              </p>
+              <Tooltip text="The most recent L2 state confirmed as final on L1. Once finalized, transactions cannot be reverted or challenged.">
+                <p className="text-xs text-text-secondary uppercase tracking-wide cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2 w-fit">
+                  Latest Finalized
+                </p>
+              </Tooltip>
               <CopyableValue
                 value={status?.latest_finalized}
                 isHash={true}
@@ -129,11 +136,15 @@ export function RollupCard({ rollup, status, loading, health, sequencer }) {
             </div>
             {sequencer && (
               <div className="pt-2 border-t border-border space-y-1.5">
-                <p className="text-xs text-text-secondary uppercase tracking-wide">
-                  L2 Sequencer
-                </p>
+                <Tooltip text="Real-time monitoring of the L2 sequencer — the entity that orders and produces new blocks on the rollup chain.">
+                  <p className="text-xs text-text-secondary uppercase tracking-wide cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2 w-fit">
+                    L2 Sequencer
+                  </p>
+                </Tooltip>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-secondary">Block</span>
+                  <Tooltip text="The latest L2 block number produced by the sequencer. This increments with every new block on the rollup.">
+                    <span className="text-xs text-text-secondary cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2">Block</span>
+                  </Tooltip>
                   <span className="text-sm font-mono text-text-primary">
                     {sequencer.latest_block != null
                       ? sequencer.latest_block.toLocaleString()
@@ -141,7 +152,9 @@ export function RollupCard({ rollup, status, loading, health, sequencer }) {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-secondary">Rate</span>
+                  <Tooltip text="How many L2 blocks the sequencer is producing per second. A drop to zero may indicate sequencer downtime.">
+                    <span className="text-xs text-text-secondary cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2">Rate</span>
+                  </Tooltip>
                   <span className="text-sm font-mono text-text-primary">
                     {sequencer.blocks_per_second != null
                       ? `${sequencer.blocks_per_second.toFixed(2)} blk/s`
@@ -149,7 +162,9 @@ export function RollupCard({ rollup, status, loading, health, sequencer }) {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-secondary">Status</span>
+                  <Tooltip text="Whether the sequencer is actively producing new blocks. 'Down' means no new block has been seen within the downtime threshold.">
+                    <span className="text-xs text-text-secondary cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2">Status</span>
+                  </Tooltip>
                   {sequencer.is_producing ? (
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
                       <span className="w-1.5 h-1.5 rounded-full bg-success" />
