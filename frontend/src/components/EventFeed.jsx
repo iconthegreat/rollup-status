@@ -11,10 +11,10 @@ export function EventFeed({ events, onClear }) {
 
   return (
     <div className="bg-bg-secondary border border-border rounded-lg overflow-hidden">
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center justify-between">
+      <div className="p-3 sm:p-4 border-b border-border">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-text-primary">
+            <h2 className="text-base sm:text-lg font-semibold text-text-primary">
               Live Events
             </h2>
             <span className="px-2 py-0.5 rounded-full bg-bg-tertiary text-xs text-text-secondary">
@@ -26,7 +26,7 @@ export function EventFeed({ events, onClear }) {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="bg-bg-tertiary border border-border rounded px-2 py-1 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-arbitrum"
+              className="bg-bg-tertiary border border-border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-arbitrum"
             >
               <option value="all">All Rollups</option>
               <option value="arbitrum">Arbitrum</option>
@@ -46,7 +46,7 @@ export function EventFeed({ events, onClear }) {
         </div>
       </div>
 
-      <div className="p-4 max-h-[600px] overflow-y-auto">
+      <div className="p-3 sm:p-4 max-h-[400px] sm:max-h-[600px] overflow-y-auto">
         {filteredEvents.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-bg-tertiary flex items-center justify-center">

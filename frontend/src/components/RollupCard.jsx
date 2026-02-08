@@ -63,18 +63,18 @@ export function RollupCard({ rollup, status, loading, health, sequencer }) {
   return (
     <div className="bg-bg-secondary border border-border rounded-lg overflow-hidden">
       <div className={`h-1 bg-${accentColor}`} />
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center">
+      <div className="p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg overflow-hidden flex items-center justify-center">
               <img
                 src={logos[rollup]}
                 alt={`${rollup} logo`}
-                className="w-10 h-10 object-contain"
+                className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
               />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-text-primary capitalize">
+              <h3 className="text-base sm:text-lg font-semibold text-text-primary capitalize">
                 {rollup}
               </h3>
               <p className="text-xs text-text-secondary">

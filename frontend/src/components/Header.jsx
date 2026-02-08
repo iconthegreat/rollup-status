@@ -33,11 +33,11 @@ export function Header({ connectionStatus }) {
   return (
     <header className="border-b border-border bg-bg-secondary">
       <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-arbitrum/20 flex items-center justify-center">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-arbitrum/20 flex items-center justify-center">
               <svg
-                className="w-6 h-6 text-arbitrum"
+                className="w-5 h-5 sm:w-6 sm:h-6 text-arbitrum"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -51,10 +51,10 @@ export function Header({ connectionStatus }) {
               </svg>
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-text-primary">
+              <h1 className="text-lg sm:text-xl font-semibold text-text-primary">
                 Rollup Status
               </h1>
-              <p className="text-sm text-text-secondary">
+              <p className="text-sm text-text-secondary hidden sm:block">
                 Real-time Rollup Analytics Dashboard
               </p>
             </div>
@@ -63,7 +63,7 @@ export function Header({ connectionStatus }) {
             <span
               className={`w-2 h-2 rounded-full ${config.dot} ${config.animate ? 'animate-pulse' : ''}`}
             />
-            <span className="text-text-secondary">{config.text}</span>
+            <span className="text-text-secondary hidden sm:inline">{config.text}</span>
           </div>
         </div>
       </div>

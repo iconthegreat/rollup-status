@@ -15,7 +15,7 @@ function LivenessIndicator({ label, tooltip, ageSecs, cadenceSecs, delayedSecs }
 
   return (
     <Tooltip text={tooltip}>
-      <div className="flex items-center justify-between cursor-help">
+      <div className="flex items-center justify-between cursor-help flex-wrap gap-x-2 gap-y-0.5">
         <span className="text-xs text-text-secondary underline decoration-dotted decoration-text-secondary/40 underline-offset-2">{label}</span>
         <span className={`text-xs font-mono ${colorClass}`}>
           {ageSecs != null ? `${formatDuration(ageSecs)} ago` : '—'}
@@ -96,7 +96,7 @@ export function RollupDetails({ rollup, health, sequencer }) {
             Liveness
           </p>
         </Tooltip>
-        <div className="space-y-1.5 bg-bg-tertiary rounded-md p-3">
+        <div className="space-y-1.5 bg-bg-tertiary rounded-md p-2.5 sm:p-3">
           <LivenessIndicator
             label="Last Event"
             tooltip={livenessTooltips.lastEvent}
@@ -128,7 +128,7 @@ export function RollupDetails({ rollup, health, sequencer }) {
             Health Rules
           </p>
         </Tooltip>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 bg-bg-tertiary rounded-md p-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 bg-bg-tertiary rounded-md p-2.5 sm:p-3">
           <Tooltip text={ruleTooltips.batchCadence}>
             <div className="flex justify-between cursor-help">
               <span className="text-xs text-text-secondary underline decoration-dotted decoration-text-secondary/40 underline-offset-2">Batch cadence</span>
@@ -189,8 +189,8 @@ export function RollupDetails({ rollup, health, sequencer }) {
               Sequencer Metrics
             </p>
           </Tooltip>
-          <div className="space-y-1.5 bg-bg-tertiary rounded-md p-3">
-            <div className="flex items-center justify-between">
+          <div className="space-y-1.5 bg-bg-tertiary rounded-md p-2.5 sm:p-3">
+            <div className="flex items-center justify-between flex-wrap gap-x-2 gap-y-0.5">
               <Tooltip text="How long ago the sequencer produced its most recent block. A rising value may signal the sequencer has stalled.">
                 <span className="text-xs text-text-secondary cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2">Seconds since last block</span>
               </Tooltip>
@@ -200,7 +200,7 @@ export function RollupDetails({ rollup, health, sequencer }) {
                   : '—'}
               </span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-x-2 gap-y-0.5">
               <Tooltip text="When the backend last queried the L2 RPC for new block data.">
                 <span className="text-xs text-text-secondary cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2">Last polled</span>
               </Tooltip>
@@ -210,7 +210,7 @@ export function RollupDetails({ rollup, health, sequencer }) {
                   : '—'}
               </span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-x-2 gap-y-0.5">
               <Tooltip text="The timestamp embedded in the latest L2 block, set by the sequencer when the block was produced.">
                 <span className="text-xs text-text-secondary cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2">Block timestamp</span>
               </Tooltip>
@@ -231,7 +231,7 @@ export function RollupDetails({ rollup, health, sequencer }) {
             Rollup Info
           </p>
         </Tooltip>
-        <div className="bg-bg-tertiary rounded-md p-3 space-y-2">
+        <div className="bg-bg-tertiary rounded-md p-2.5 sm:p-3 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
             <Tooltip text={rollupTypeTooltips[rollupType] || rollupType}>
               <span className="inline-flex px-2 py-0.5 rounded text-xs bg-bg-secondary text-text-primary border border-border cursor-help">
@@ -250,7 +250,7 @@ export function RollupDetails({ rollup, health, sequencer }) {
           </div>
           <div className="space-y-1.5">
             {contracts.map((c) => (
-              <div key={c.address} className="flex items-center justify-between">
+              <div key={c.address} className="flex items-center justify-between flex-wrap gap-x-2 gap-y-0.5">
                 <Tooltip text={contractTooltips[c.label] || `L1 contract: ${c.label}`}>
                   <span className="text-xs text-text-secondary cursor-help underline decoration-dotted decoration-text-secondary/40 underline-offset-2">{c.label}</span>
                 </Tooltip>

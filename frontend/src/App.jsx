@@ -178,9 +178,9 @@ function App() {
     <div className="min-h-screen bg-bg-primary">
       <Header connectionStatus={wsStatus} />
 
-      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 py-4 sm:py-6 lg:py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-4 sm:space-y-6 md:col-span-1 lg:col-span-1">
             <RollupCard
               rollup="arbitrum"
               status={arbitrumStatus}
@@ -218,7 +218,7 @@ function App() {
             />
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="md:col-span-1 lg:col-span-2">
             <EventFeed events={events} onClear={clearEvents} />
           </div>
         </div>

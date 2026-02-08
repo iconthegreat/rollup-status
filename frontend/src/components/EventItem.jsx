@@ -55,8 +55,8 @@ export function EventItem({ event }) {
     : null
 
   return (
-    <div className="flex items-center gap-4 p-3 rounded-lg bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors">
-      <div className={`w-1 h-12 rounded-full bg-${accentColor}`} />
+    <div className="flex items-center gap-2 sm:gap-4 p-2 sm:p-3 rounded-lg bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors">
+      <div className={`w-1 h-10 sm:h-12 rounded-full bg-${accentColor}`} />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
@@ -70,7 +70,7 @@ export function EventItem({ event }) {
           </span>
         </div>
 
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-2 sm:gap-4 text-sm flex-wrap">
           {event.block_number && (
             <span className="text-text-secondary">
               Block{' '}
@@ -93,7 +93,7 @@ export function EventItem({ event }) {
         </div>
       </div>
 
-      <div className="text-xs text-text-secondary whitespace-nowrap">
+      <div className="text-[11px] sm:text-xs text-text-secondary whitespace-nowrap shrink-0">
         {formatRelativeTime(event.timestamp)}
       </div>
     </div>

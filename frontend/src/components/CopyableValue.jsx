@@ -4,7 +4,7 @@ export function CopyableValue({ value, isHash = false, etherscanUrl = null }) {
   const [copied, setCopied] = useState(false)
 
   if (!value || value === '—') {
-    return <span className="text-lg font-mono text-text-primary">—</span>
+    return <span className="text-base sm:text-lg font-mono text-text-primary">—</span>
   }
 
   const handleCopy = async (e) => {
@@ -23,7 +23,7 @@ export function CopyableValue({ value, isHash = false, etherscanUrl = null }) {
   const content = (
     <span
       onClick={handleCopy}
-      className="text-lg font-mono text-text-primary cursor-pointer hover:text-arbitrum transition-colors inline-flex items-center gap-2 group"
+      className="text-base sm:text-lg font-mono text-text-primary cursor-pointer hover:text-arbitrum transition-colors inline-flex items-center gap-1.5 sm:gap-2 group"
       title={copied ? 'Copied!' : `Click to copy: ${value}`}
     >
       {displayValue}
